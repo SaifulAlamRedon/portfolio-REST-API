@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -30,9 +32,30 @@ import { MailModule } from './mail/mail.module';
 import { CloudinaryController } from './cloudinary/cloudinary.controller';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { RolesGuard } from './common/guards/roles.guard';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { Project } from './projects/entities/project.entity';
+import { Category } from './projects/entities/category.entity';
+import { Technology } from './projects/entities/technology.entity';
+import { Skill } from './skills/entities/skill.entity';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST', 'localhost'),
+        port: Number(configService.get<number>('DB_PORT', 5432)),
+        username: configService.get<string>('DB_USERNAME', 'postgres'),
+        password: configService.get<string>('DB_PASSWORD', 'postgres'),
+        database: configService.get<string>('DB_NAME', 'portfolio'),
+        entities: [Project, Category, Technology, Skill],
+        synchronize: true,
+        logging: false,
+      }),
+    }),
     AuthModule,
     UsersModule,
     ProjectsModule,
@@ -66,6 +89,10 @@ import { RolesGuard } from './common/guards/roles.guard';
   providers: [
     AppService,
     SettingsService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: RolesGuard,

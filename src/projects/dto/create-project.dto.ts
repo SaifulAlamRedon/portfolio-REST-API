@@ -2,7 +2,7 @@ import { IsArray, IsBoolean, IsOptional, IsString, IsUrl } from 'class-validator
 
 export class CreateProjectDto {
   @IsString()
-  title: string;
+  title!: string;
 
   @IsOptional()
   @IsString()

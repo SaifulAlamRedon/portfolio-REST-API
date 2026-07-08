@@ -1,88 +1,67 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-
-interface ProjectRecord {
-  id: string;
-  title: string;
-  slug: string;
-  shortDescription: string;
-  description: string;
-  coverImage?: string;
-  images?: string[];
-  technologies?: string[];
-  githubUrl?: string;
-  liveUrl?: string;
-  featured?: boolean;
-  status: string;
-  category?: string;
-  viewCount: number;
-  archived?: boolean;
-  deleted?: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CreateProjectDto } from './dto/create-project.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
+import { Project } from './entities/project.entity';
+import { Category } from './entities/category.entity';
+import { Technology } from './entities/technology.entity';
 
 @Injectable()
 export class ProjectsService {
-  private readonly projects: ProjectRecord[] = [
-    {
-      id: 'project-1',
-      title: 'Portfolio Website',
-      slug: 'portfolio-website',
-      shortDescription: 'Modern personal portfolio site',
-      description: 'A polished portfolio website built with Next.js and NestJS.',
-      coverImage: 'https://example.com/cover.jpg',
-      images: ['https://example.com/1.jpg'],
-      technologies: ['NestJS', 'Next.js', 'TypeScript'],
-      githubUrl: 'https://github.com/example/portfolio',
-      liveUrl: 'https://example.com',
-      featured: true,
-      status: 'published',
-      category: 'web',
-      viewCount: 12,
-      archived: false,
-      deleted: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ];
+  constructor(
+    @InjectRepository(Project)
+    private readonly projectRepository: Repository<Project>,
+    @InjectRepository(Category)
+    private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(Technology)
+    private readonly technologyRepository: Repository<Technology>,
+  ) {}
 
-  findAll(query: any) {
+  async findAll(query: Record<string, any>) {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 10);
-    const search = String(query.search ?? '').toLowerCase();
-    const category = query.category;
-    const technology = query.technology;
-    const featured = query.featured;
-    const status = query.status;
-    const sortBy = query.sortBy;
-    const sortOrder = query.sortOrder === 'desc' ? 'desc' : 'asc';
+    const search = query.search?.trim() ?? undefined;
+    const category = query.category?.trim();
+    const technology = query.technology?.trim();
+    const featured = query.featured === 'true' ? true : query.featured === 'false' ? false : undefined;
+    const status = query.status?.trim();
+    const sortBy = query.sortBy === 'updatedAt' ? 'project.updatedAt' : 'project.createdAt';
+    const sortOrder = query.sortOrder === 'desc' ? 'DESC' : 'ASC';
 
-    let filtered = this.projects.filter((item) => {
-      if (item.deleted || item.archived) {
-        return false;
-      }
-      const matchesSearch = !search || [item.title, item.description, item.category, item.status].join(' ').toLowerCase().includes(search);
-      const matchesCategory = !category || item.category === category;
-      const matchesTechnology = !technology || item.technologies?.includes(technology);
-      const matchesFeatured = featured === undefined || item.featured === (featured === 'true');
-      const matchesStatus = !status || item.status === status;
-      return matchesSearch && matchesCategory && matchesTechnology && matchesFeatured && matchesStatus;
-    });
+    const qb = this.projectRepository.createQueryBuilder('project');
+    qb.leftJoinAndSelect('project.category', 'category');
+    qb.leftJoinAndSelect('project.technologies', 'technology');
+    qb.where('project.deletedAt IS NULL');
+    qb.andWhere('project.archived = false');
 
-    if (sortBy) {
-      filtered = filtered.sort((a, b) => {
-        const aValue = (a as any)[sortBy];
-        const bValue = (b as any)[sortBy];
-        if (aValue === bValue) return 0;
-        if (sortOrder === 'desc') {
-          return aValue > bValue ? -1 : 1;
-        }
-        return aValue < bValue ? -1 : 1;
-      });
+    if (search) {
+      qb.andWhere(
+        '(LOWER(project.title) LIKE LOWER(:search) OR LOWER(project.description) LIKE LOWER(:search) OR LOWER(project.shortDescription) LIKE LOWER(:search) OR LOWER(category.name) LIKE LOWER(:search))',
+        { search: `%${search}%` },
+      );
     }
 
-    const start = (page - 1) * limit;
-    const data = filtered.slice(start, start + limit);
+    if (category) {
+      qb.andWhere('category.name = :category', { category });
+    }
+
+    if (technology) {
+      qb.andWhere('technology.name = :technology', { technology });
+    }
+
+    if (featured !== undefined) {
+      qb.andWhere('project.featured = :featured', { featured });
+    }
+
+    if (status) {
+      qb.andWhere('project.status = :status', { status });
+    }
+
+    qb.orderBy(sortBy, sortOrder);
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
 
     return {
       success: true,
@@ -91,50 +70,78 @@ export class ProjectsService {
       pagination: {
         page,
         limit,
-        total: filtered.length,
-        totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
       },
     };
   }
 
-  findOne(id: string) {
-    const project = this.projects.find((item) => (item.id === id || item.slug === id) && !item.deleted);
+  async findOne(id: string) {
+    const project = await this.projectRepository.findOne({
+      where: [{ id }, { slug: id }],
+      relations: {
+        category: true,
+        technologies: true,
+      },
+      withDeleted: false,
+    });
+
     if (!project) {
       throw new NotFoundException('Project not found');
     }
+
     return { success: true, message: 'Project fetched successfully', data: project };
   }
 
-  create(dto: any) {
-    const project: ProjectRecord = {
-      id: `project-${Date.now()}`,
+  async create(dto: CreateProjectDto) {
+    const slug = dto.slug?.trim() || this.generateSlug(dto.title);
+    const category = dto.category ? await this.findOrCreateCategory(dto.category) : undefined;
+    const technologies = dto.technologies ? await this.findOrCreateTechnologies(dto.technologies) : [];
+
+    const project = this.projectRepository.create({
       title: dto.title,
-      slug: dto.slug ?? dto.title.toLowerCase().replace(/\s+/g, '-'),
-      shortDescription: dto.shortDescription ?? '',
-      description: dto.description ?? '',
+      slug,
+      shortDescription: dto.shortDescription,
+      description: dto.description,
       coverImage: dto.coverImage,
-      images: dto.images ?? [],
-      technologies: dto.technologies ?? [],
+      images: dto.images,
+      technologies,
+      category,
       githubUrl: dto.githubUrl,
       liveUrl: dto.liveUrl,
       featured: dto.featured ?? false,
       status: dto.status ?? 'draft',
-      category: dto.category,
-      viewCount: 0,
-      archived: false,
-      deleted: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.projects.unshift(project);
+    await this.projectRepository.save(project);
+
     return { success: true, message: 'Project created successfully', data: project };
   }
 
-  update(id: string, dto: any) {
-    const project = this.projects.find((item) => item.id === id || item.slug === id);
-    if (!project || project.deleted) {
+  async update(id: string, dto: UpdateProjectDto) {
+    const project = await this.projectRepository.findOne({
+      where: [{ id }, { slug: id }],
+      relations: {
+        category: true,
+        technologies: true,
+      },
+      withDeleted: false,
+    });
+
+    if (!project) {
       throw new NotFoundException('Project not found');
+    }
+
+    if (dto.title && !dto.slug) {
+      dto.slug = this.generateSlug(dto.title);
+    }
+
+    if (dto.category !== undefined) {
+      project.category = dto.category ? await this.findOrCreateCategory(dto.category) : undefined;
+    }
+
+    if (dto.technologies !== undefined) {
+      project.technologies = dto.technologies ? await this.findOrCreateTechnologies(dto.technologies) : [];
     }
 
     Object.assign(project, {
@@ -142,130 +149,243 @@ export class ProjectsService {
       updatedAt: new Date(),
     });
 
+    await this.projectRepository.save(project);
+
     return { success: true, message: 'Project updated successfully', data: project };
   }
 
-  remove(id: string) {
-    const project = this.projects.find((item) => item.id === id || item.slug === id);
-    if (!project || project.deleted) {
+  async remove(id: string) {
+    const project = await this.projectRepository.findOne({
+      where: [{ id }, { slug: id }],
+      withDeleted: false,
+    });
+    if (!project) {
       throw new NotFoundException('Project not found');
     }
 
-    project.deleted = true;
-    project.updatedAt = new Date();
+    await this.projectRepository.softDelete(project.id);
     return { success: true, message: 'Project soft deleted successfully' };
   }
 
-  restore(id: string) {
-    const project = this.projects.find((item) => item.id === id || item.slug === id);
+  async restore(id: string) {
+    const project = await this.projectRepository.findOne({
+      where: [{ id }, { slug: id }],
+      withDeleted: true,
+    });
     if (!project) {
       throw new NotFoundException('Project not found');
     }
 
-    project.deleted = false;
-    project.updatedAt = new Date();
-    return { success: true, message: 'Project restored successfully', data: project };
+    await this.projectRepository.restore(project.id);
+    const restored = await this.projectRepository.findOne({
+      where: { id: project.id },
+      relations: {
+        category: true,
+        technologies: true,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Project restored successfully',
+      data: restored,
+    };
   }
 
-  publish(id: string) {
-    const project = this.projects.find((item) => item.id === id || item.slug === id);
-    if (!project) {
-      throw new NotFoundException('Project not found');
-    }
-
-    project.status = 'published';
-    project.updatedAt = new Date();
-    return { success: true, message: 'Project published successfully', data: project };
+  async publish(id: string) {
+    return this.updateStatus(id, 'published', 'Project published successfully');
   }
 
-  unpublish(id: string) {
-    const project = this.projects.find((item) => item.id === id || item.slug === id);
-    if (!project) {
-      throw new NotFoundException('Project not found');
-    }
-
-    project.status = 'draft';
-    project.updatedAt = new Date();
-    return { success: true, message: 'Project unpublished successfully', data: project };
+  async unpublish(id: string) {
+    return this.updateStatus(id, 'draft', 'Project unpublished successfully');
   }
 
-  archive(id: string) {
-    const project = this.projects.find((item) => item.id === id || item.slug === id);
+  async archive(id: string) {
+    const project = await this.projectRepository.findOne({
+      where: [{ id }, { slug: id }],
+      withDeleted: false,
+    });
     if (!project) {
       throw new NotFoundException('Project not found');
     }
 
     project.archived = true;
-    project.updatedAt = new Date();
+    await this.projectRepository.save(project);
+
     return { success: true, message: 'Project archived successfully', data: project };
   }
 
-  duplicate(id: string) {
-    const project = this.projects.find((item) => item.id === id || item.slug === id);
+  async duplicate(id: string) {
+    const project = await this.projectRepository.findOne({
+      where: [{ id }, { slug: id }],
+      relations: {
+        category: true,
+        technologies: true,
+      },
+      withDeleted: false,
+    });
+
     if (!project) {
       throw new NotFoundException('Project not found');
     }
 
-    const copy: ProjectRecord = {
-      ...project,
-      id: `project-${Date.now()}`,
-      slug: `${project.slug}-copy-${Date.now()}`,
+    const copy = this.projectRepository.create({
       title: `${project.title} (Copy)`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      deleted: false,
+      slug: `${project.slug}-copy-${Date.now()}`,
+      shortDescription: project.shortDescription,
+      description: project.description,
+      coverImage: project.coverImage,
+      images: project.images,
+      technologies: project.technologies,
+      category: project.category,
+      githubUrl: project.githubUrl,
+      liveUrl: project.liveUrl,
+      featured: project.featured,
+      status: project.status,
       archived: false,
-    };
-    this.projects.unshift(copy);
+      viewCount: 0,
+    });
+
+    await this.projectRepository.save(copy);
+
     return { success: true, message: 'Project duplicated successfully', data: copy };
   }
 
-  toggleFeatured(id: string) {
-    const project = this.projects.find((item) => item.id === id || item.slug === id);
+  async toggleFeatured(id: string) {
+    const project = await this.projectRepository.findOne({
+      where: [{ id }, { slug: id }],
+      withDeleted: false,
+    });
     if (!project) {
       throw new NotFoundException('Project not found');
     }
+
     project.featured = !project.featured;
-    project.updatedAt = new Date();
+    await this.projectRepository.save(project);
     return { success: true, message: 'Project featured status updated', data: project };
   }
 
-  uploadImages(id: string, files: any[]) {
-    const project = this.projects.find((item) => item.id === id || item.slug === id);
+  async uploadImages(id: string, files: any[]) {
+    const project = await this.projectRepository.findOne({
+      where: [{ id }, { slug: id }],
+      withDeleted: false,
+    });
     if (!project) {
       throw new NotFoundException('Project not found');
     }
-    project.images = [...(project.images ?? []), ...(files?.map((file) => file.path || file.originalname) ?? [])];
-    project.updatedAt = new Date();
+
+    project.images = [
+      ...(project.images ?? []),
+      ...(files?.map((file) => file.path || file.originalname) ?? []),
+    ];
+
+    await this.projectRepository.save(project);
+
     return { success: true, message: 'Project images uploaded successfully', data: project };
   }
 
-  updateTechnologies(id: string, technologies: string[]) {
-    const project = this.projects.find((item) => item.id === id || item.slug === id);
+  async updateTechnologies(id: string, technologies: string[]) {
+    const project = await this.projectRepository.findOne({
+      where: [{ id }, { slug: id }],
+      relations: {
+        technologies: true,
+      },
+      withDeleted: false,
+    });
     if (!project) {
       throw new NotFoundException('Project not found');
     }
-    project.technologies = technologies;
-    project.updatedAt = new Date();
+
+    project.technologies = await this.findOrCreateTechnologies(technologies ?? []);
+    await this.projectRepository.save(project);
+
     return { success: true, message: 'Project technologies updated successfully', data: project };
   }
 
-  featured() {
+  async featured() {
+    const projects = await this.projectRepository.find({
+      where: { featured: true, archived: false },
+      relations: {
+        category: true,
+        technologies: true,
+      },
+      withDeleted: false,
+    });
+
     return {
       success: true,
       message: 'Featured projects fetched successfully',
-      data: this.projects.filter((item) => item.featured && !item.deleted && !item.archived),
+      data: projects,
     };
   }
 
-  incrementView(id: string) {
-    const project = this.projects.find((item) => item.id === id || item.slug === id);
+  private async updateStatus(id: string, status: string, message: string) {
+    const project = await this.projectRepository.findOne({
+      where: [{ id }, { slug: id }],
+      withDeleted: false,
+    });
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    project.status = status;
+    await this.projectRepository.save(project);
+
+    return { success: true, message, data: project };
+  }
+
+  private async findOrCreateCategory(name: string) {
+    const trimmed = name.trim();
+    let category = await this.categoryRepository.findOne({ where: { name: trimmed } });
+    if (!category) {
+      category = this.categoryRepository.create({ name: trimmed });
+      await this.categoryRepository.save(category);
+    }
+    return category;
+  }
+
+  private async findOrCreateTechnologies(names: string[]) {
+    const trimmedNames = names.map((name) => name.trim()).filter(Boolean);
+    if (trimmedNames.length === 0) {
+      return [];
+    }
+
+    const existingTechnologies = await this.technologyRepository.find({
+      where: trimmedNames.map((name) => ({ name })),
+    });
+
+    const existingNames = existingTechnologies.map((tech) => tech.name);
+    const newNames = trimmedNames.filter((name) => !existingNames.includes(name));
+
+    const newTechnologies = newNames.map((name) => this.technologyRepository.create({ name }));
+    await this.technologyRepository.save(newTechnologies);
+
+    return [...existingTechnologies, ...newTechnologies];
+  }
+
+  private generateSlug(value: string) {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]+/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  async incrementView(id: string) {
+    const project = await this.projectRepository.findOne({
+      where: [{ id }, { slug: id }],
+      withDeleted: false,
+    });
+
     if (!project) {
       throw new NotFoundException('Project not found');
     }
 
     project.viewCount += 1;
-    project.updatedAt = new Date();
+    await this.projectRepository.save(project);
+
     return { success: true, message: 'View count updated', data: project };
   }
 }

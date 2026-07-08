@@ -1,34 +1,36 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Request } from 'express';
-
-interface RequestWithUser extends Request {
-  user?: any;
-}
+import { Reflector } from '@nestjs/core';
+import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const result = await super.canActivate(context);
-    const request = context.switchToHttp().getRequest<RequestWithUser>();
-
-    if (request.user && typeof request.user === 'object') {
-      return true;
-    }
-
-    throw new UnauthorizedException('Invalid or missing token');
+export class JwtAuthGuard extends AuthGuard('jwt') {
+  constructor(private reflector: Reflector) {
+    super();
   }
 
-  handleRequest<TUser = any>(err: any, user: TUser, _info: any): TUser {
+  override canActivate(context: ExecutionContext) {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      return true;
+    }
+    return super.canActivate(context);
+  }
+
+  override handleRequest<TUser = any>(
+    err: any,
+    user: any,
+    info: any,
+    context: ExecutionContext,
+    status?: any,
+  ): TUser {
     if (err || !user) {
-      throw err ?? new UnauthorizedException('Invalid or missing token');
+      throw err ?? new UnauthorizedException('Authentication required.');
     }
 
-    return user;
+    return user as TUser;
   }
 }
