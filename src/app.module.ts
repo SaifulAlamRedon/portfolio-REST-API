@@ -1,0 +1,102 @@
+import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { ProjectsModule } from './projects/projects.module';
+import { SkillsModule } from './skills/skills.module';
+import { ExperiencesController } from './experiences/experiences.controller';
+import { ExperiencesModule } from './experiences/experiences.module';
+import { EducationController } from './education/education.controller';
+import { EducationModule } from './education/education.module';
+import { CertificatesController } from './certificates/certificates.controller';
+import { CertificatesModule } from './certificates/certificates.module';
+import { ContactController } from './contact/contact.controller';
+import { ContactModule } from './contact/contact.module';
+import { TestimonialsController } from './testimonials/testimonials.controller';
+import { TestimonialsModule } from './testimonials/testimonials.module';
+import { UploadsController } from './uploads/uploads.controller';
+import { UploadsModule } from './uploads/uploads.module';
+import { AnalyticsController } from './analytics/analytics.controller';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { SettingsController } from './settings/settings.controller';
+import { SettingsService } from './settings/settings.service';
+import { SettingsModule } from './settings/settings.module';
+import { NewsletterController } from './newsletter/newsletter.controller';
+import { NewsletterModule } from './newsletter/newsletter.module';
+import { MailController } from './mail/mail.controller';
+import { MailModule } from './mail/mail.module';
+import { CloudinaryController } from './cloudinary/cloudinary.controller';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { RolesGuard } from './common/guards/roles.guard';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { Project } from './projects/entities/project.entity';
+import { Category } from './projects/entities/category.entity';
+import { Technology } from './projects/entities/technology.entity';
+import { Skill } from './skills/entities/skill.entity';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST', 'localhost'),
+        port: Number(configService.get<number>('DB_PORT', 5432)),
+        username: configService.get<string>('DB_USERNAME', 'postgres'),
+        password: configService.get<string>('DB_PASSWORD', 'postgres'),
+        database: configService.get<string>('DB_NAME', 'portfolio'),
+        entities: [Project, Category, Technology, Skill],
+        synchronize: true,
+        logging: false,
+      }),
+    }),
+    AuthModule,
+    UsersModule,
+    ProjectsModule,
+    SkillsModule,
+    ExperiencesModule,
+    EducationModule,
+    CertificatesModule,
+    ContactModule,
+    TestimonialsModule,
+    UploadsModule,
+    AnalyticsModule,
+    SettingsModule,
+    NewsletterModule,
+    MailModule,
+    CloudinaryModule,
+  ],
+  controllers: [
+    AppController,
+    ExperiencesController,
+    EducationController,
+    CertificatesController,
+    ContactController,
+    TestimonialsController,
+    UploadsController,
+    AnalyticsController,
+    SettingsController,
+    NewsletterController,
+    MailController,
+    CloudinaryController,
+  ],
+  providers: [
+    AppService,
+    SettingsService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
+})
+export class AppModule {}
