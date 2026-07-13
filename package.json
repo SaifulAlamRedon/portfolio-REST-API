@@ -1,22 +1,4 @@
 {
-<<<<<<< HEAD
-  "name": "portfolio-root",
-  "version": "0.0.0",
-  "private": true,
-  "license": "UNLICENSED",
-  "scripts": {
-    "start": "npm --prefix portfolio run start",
-    "start:dev": "npm --prefix portfolio run start:dev",
-    "start:prod": "npm --prefix portfolio run start:prod",
-    "build": "npm --prefix portfolio run build",
-    "test": "npm --prefix portfolio run test"
-  },
-  "dependencies": {
-    "@nestjs/config": "^4.0.4",
-    "@nestjs/jwt": "^11.0.2",
-    "@nestjs/passport": "^11.0.5",
-    "@nestjs/typeorm": "^11.0.3",
-=======
   "name": "portfolio",
   "version": "0.0.1",
   "description": "",
@@ -45,25 +27,18 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.0.1",
-    "@nestjs/typeorm": "^11.0.0",
->>>>>>> e36e16c8d995c00dd6e9d161179714fa6fe5db74
+    "@nestjs/typeorm": "^11.0.3",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.3.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
-<<<<<<< HEAD
-    "typeorm": "^1.0.0"
-  },
-  "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
-    "@types/jest": "^30.0.0",
-    "@types/passport-jwt": "^4.0.1"
-=======
-    "pg": "^8.11.2",
+    "pg": "^8.22.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.18"
+    "typeorm": "^0.3.30"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -72,9 +47,11 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
+    "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.0.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
@@ -107,6 +84,5 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
->>>>>>> e36e16c8d995c00dd6e9d161179714fa6fe5db74
   }
 }

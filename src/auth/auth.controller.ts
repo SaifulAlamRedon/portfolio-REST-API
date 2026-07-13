@@ -13,6 +13,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { VerifyTokenDto } from './dto/verify-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 
 @Controller('auth')
@@ -20,24 +21,28 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // POST /auth/register
+  @Public()
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   // POST /auth/login
+  @Public()
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
   // POST /auth/refresh
+  @Public()
   @Post('refresh')
   refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refreshToken(dto);
   }
 
   // POST /auth/logout
+  @Public()
   @Post('logout')
   logout(@Body() dto: RefreshTokenDto) {
     return this.authService.logout(dto.refreshToken);
@@ -61,18 +66,21 @@ export class AuthController {
   }
 
   // POST /auth/verify-token
+  @Public()
   @Post('verify-token')
   verifyToken(@Body() dto: VerifyTokenDto) {
     return this.authService.verifyToken(dto);
   }
 
   // POST /auth/validate-credentials
+  @Public()
   @Post('validate-credentials')
   validateCredentials(@Body() dto: LoginDto) {
     return this.authService.validateCredentials(dto);
   }
 
   // POST /auth/generate-tokens
+  @Public()
   @Post('generate-tokens')
   generateTokens(@Body('userId') userId: string) {
     return this.authService.generateTokens(userId);

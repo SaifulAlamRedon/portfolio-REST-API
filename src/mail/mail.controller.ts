@@ -1,4 +1,6 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { MailService } from './mail.service';
 import { ContactMailDto } from './dto/contact-mail.dto';
 import { WelcomeMailDto } from './dto/welcome-mail.dto';
@@ -7,6 +9,8 @@ import { PasswordResetMailDto } from './dto/password-reset-mail.dto';
 import { TestimonialApprovedMailDto } from './dto/testimonial-approved-mail.dto';
 import { CustomMailDto } from './dto/custom-mail.dto';
 
+@UseGuards(JwtAuthGuard)
+@Roles('admin')
 @Controller('mail')
 export class MailController {
   constructor(private readonly mailService: MailService) {}

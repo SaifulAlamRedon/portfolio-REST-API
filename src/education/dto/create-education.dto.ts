@@ -2,16 +2,16 @@ import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateEducationDto {
   @IsString()
-  institution: string;
+  institution!: string;
 
   @IsString()
-  degree: string;
+  degree!: string;
 
   @IsString()
-  fieldOfStudy: string;
+  fieldOfStudy!: string;
 
   @IsNumber()
-  startYear: number;
+  startYear!: number;
 
   @IsOptional()
   @IsNumber()

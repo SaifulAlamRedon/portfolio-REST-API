@@ -2,13 +2,13 @@ import { IsOptional, IsString } from 'class-validator';
 
 export class CreateCertificateDto {
   @IsString()
-  title: string;
+  title!: string;
 
   @IsString()
-  issuer: string;
+  issuer!: string;
 
   @IsString()
-  issueDate: string;
+  issueDate!: string;
 
   @IsOptional()
   @IsString()
