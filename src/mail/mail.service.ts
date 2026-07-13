@@ -121,12 +121,17 @@ export class MailService {
   }
 
   async sendCustomEmail(dto: any) {
+    const to = dto.to || dto.email;
     const subject = dto.subject || 'Message from portfolio app';
-    const text = dto.message;
-    const html = `<p>${dto.message}</p>`;
+    const text = dto.message || dto.text || '';
+    const html = dto.html || (dto.message ? `<p>${dto.message}</p>` : undefined);
+
+    if (!to) {
+      throw new Error('No recipient specified for custom email (dto.to or dto.email)');
+    }
 
     return this.sendMail({
-      to: dto.email,
+      to,
       subject,
       text,
       html,
