@@ -43,18 +43,16 @@ import { User } from './users/entities/user.entity';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const isProd = configService.get<string>('NODE_ENV') === 'production';
-        const databaseUrl = configService.get<string>('DATABASE_URL') || process.env.DATABASE_URL;
-
-        // Use DATABASE_URL only in production (Railway). For local/dev prefer explicit DB_* vars.
-        if (isProd && databaseUrl) {
-          return {
-            type: 'postgres',
-            url: databaseUrl,
-            entities: [Project, Category, Technology, Skill, Experience, Education, Certificate, ContactMessage, Testimonial, Upload, AnalyticsEvent, Settings, User],
-            synchronize: !isProd,
-            logging: false,
-            ssl: isProd ? { rejectUnauthorized: false } : undefined,
-          } as any;
+const databaseUrl = configService.get<string>('DATABASE_URL') || process.env.DATABASE_URL;
+if (databaseUrl) {
+  return {
+    type: 'postgres',
+    url: databaseUrl,
+    entities : [Project, Category, Technology, Skill, Experience, Education, Certificate, ContactMessage, Testimonial, Upload, AnalyticsEvent, Settings, User],
+           synchronize: !isProd,
+    logging: false,
+    ssl: databaseUrl.includes('railway.internal') ? false : (isProd ? { rejectUnauthorized: false } : undefined),
+  } as any;
         }
 
         return {
