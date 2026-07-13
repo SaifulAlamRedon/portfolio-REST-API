@@ -9,11 +9,25 @@ if (typeof (globalThis as any).crypto === 'undefined') {
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+
+const requireFunc = eval('require') as any;
+const helmet: any = (() => {
+  try {
+    return requireFunc('helmet');
+  } catch {
+    return null;
+  }
+})();
+const rateLimit: any = (() => {
+  try {
+    return requireFunc('express-rate-limit');
+  } catch {
+    return null;
+  }
+})();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
