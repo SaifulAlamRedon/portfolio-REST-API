@@ -1,4 +1,5 @@
-import { Column, Entity, ManyToMany, PrimaryGeneratedColumn, Index } from 'typeorm';
+import { Column, Entity, Index, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Experience } from '../../experiences/entities/experience.entity';
 import { Project } from './project.entity';
 
 @Entity('technologies')
@@ -12,4 +13,7 @@ export class Technology {
 
   @ManyToMany(() => Project, (project) => project.technologies)
   projects!: Project[];
+
+  @ManyToMany(() => Experience, (experience) => experience.technologies)
+  experiences!: Experience[];
 }

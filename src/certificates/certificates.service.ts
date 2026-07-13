@@ -1,59 +1,66 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-
-interface CertificateRecord {
-  id: string;
-  title: string;
-  issuer: string;
-  issueDate: string;
-  credentialUrl?: string;
-  image?: string;
-}
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CreateCertificateDto } from './dto/create-certificate.dto';
+import { UpdateCertificateDto } from './dto/update-certificate.dto';
+import { Certificate } from './entities/certificate.entity';
 
 @Injectable()
 export class CertificatesService {
-  private readonly certificates: CertificateRecord[] = [
-    {
-      id: 'cert-1',
-      title: 'NestJS Fundamentals',
-      issuer: 'Udemy',
-      issueDate: '2024-05-01',
-      credentialUrl: 'https://example.com/cert',
-      image: 'https://example.com/cert.png',
-    },
-  ];
+  constructor(
+    @InjectRepository(Certificate)
+    private readonly certificateRepository: Repository<Certificate>,
+  ) {}
 
-  findAll() {
-    return { success: true, message: 'Certificates fetched successfully', data: this.certificates };
+  async findAll() {
+    const certificates = await this.certificateRepository.find({
+      withDeleted: false,
+      order: { issueDate: 'DESC' },
+    });
+
+    return { success: true, message: 'Certificates fetched successfully', data: certificates };
   }
 
-  create(dto: any) {
-    const item: CertificateRecord = {
-      id: `cert-${Date.now()}`,
+  async create(dto: CreateCertificateDto) {
+    const certificate = this.certificateRepository.create({
       title: dto.title,
       issuer: dto.issuer,
       issueDate: dto.issueDate,
       credentialUrl: dto.credentialUrl,
       image: dto.image,
-    };
-    this.certificates.unshift(item);
-    return { success: true, message: 'Certificate created successfully', data: item };
+    });
+
+    const saved = await this.certificateRepository.save(certificate);
+    return { success: true, message: 'Certificate created successfully', data: saved };
   }
 
-  update(id: string, dto: any) {
-    const item = this.certificates.find((entry) => entry.id === id);
-    if (!item) {
+  async update(id: string, dto: UpdateCertificateDto) {
+    const certificate = await this.certificateRepository.findOne({
+      where: { id },
+      withDeleted: false,
+    });
+
+    if (!certificate) {
       throw new NotFoundException('Certificate not found');
     }
-    Object.assign(item, dto);
-    return { success: true, message: 'Certificate updated successfully', data: item };
+
+    Object.assign(certificate, dto);
+    const saved = await this.certificateRepository.save(certificate);
+
+    return { success: true, message: 'Certificate updated successfully', data: saved };
   }
 
-  remove(id: string) {
-    const index = this.certificates.findIndex((entry) => entry.id === id);
-    if (index === -1) {
+  async remove(id: string) {
+    const certificate = await this.certificateRepository.findOne({
+      where: { id },
+      withDeleted: false,
+    });
+
+    if (!certificate) {
       throw new NotFoundException('Certificate not found');
     }
-    this.certificates.splice(index, 1);
+
+    await this.certificateRepository.softDelete(certificate.id);
     return { success: true, message: 'Certificate deleted successfully' };
   }
 }

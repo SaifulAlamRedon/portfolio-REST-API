@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateSkillDto } from './dto/update-skill.dto';
 import { Skill } from './entities/skill.entity';
@@ -14,7 +14,7 @@ export class SkillsService {
 
   async findAll() {
     const skills = await this.skillRepository.find({
-      where: { deletedAt: null },
+      where: { deletedAt: IsNull() },
       order: { displayOrder: 'ASC' },
     });
 
@@ -36,7 +36,7 @@ export class SkillsService {
   }
 
   async update(id: string, dto: UpdateSkillDto) {
-    const skill = await this.skillRepository.findOne({ where: { id, deletedAt: null } });
+    const skill = await this.skillRepository.findOne({ where: { id, deletedAt: IsNull() } });
     if (!skill) {
       throw new NotFoundException('Skill not found');
     }
@@ -48,7 +48,7 @@ export class SkillsService {
   }
 
   async remove(id: string) {
-    const skill = await this.skillRepository.findOne({ where: { id, deletedAt: null } });
+    const skill = await this.skillRepository.findOne({ where: { id, deletedAt: IsNull() } });
     if (!skill) {
       throw new NotFoundException('Skill not found');
     }
@@ -58,7 +58,7 @@ export class SkillsService {
   }
 
   async reorder(items: Array<{ id: string; displayOrder: number }>) {
-    const skills = await this.skillRepository.findBy({ id: items.map((item) => item.id) });
+    const skills = await this.skillRepository.findBy({ id: In(items.map((item) => item.id)) });
     const skillMap = new Map(skills.map((skill) => [skill.id, skill]));
 
     for (const item of items) {

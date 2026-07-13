@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { describe, expect, it, beforeEach } from '@jest/globals';
+import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { AuthService } from '../auth/auth.service';
 import { UsersService } from './users.service';
+import { User } from './entities/user.entity';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -12,9 +13,10 @@ describe('UsersService', () => {
       providers: [
         UsersService,
         {
-          provide: AuthService,
+          provide: getRepositoryToken(User),
           useValue: {
-            users: [],
+            findOne: jest.fn(),
+            save: jest.fn(),
           },
         },
       ],

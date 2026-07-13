@@ -1,17 +1,25 @@
-import { IsBoolean, IsEmail, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class CreateSettingsDto {
   @IsOptional()
   @IsString()
-  siteTitle?: string;
+  siteName?: string;
 
   @IsOptional()
   @IsString()
-  siteDescription?: string;
+  logo?: string;
+
+  @IsOptional()
+  @IsString()
+  favicon?: string;
 
   @IsOptional()
   @IsUrl()
-  logoUrl?: string;
+  resumeUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  aboutMe?: string;
 
   @IsOptional()
   @IsEmail()
@@ -26,6 +34,22 @@ export class CreateSettingsDto {
   address?: string;
 
   @IsOptional()
-  @IsBoolean()
-  maintenanceMode?: boolean;
+  @IsUrl()
+  github?: string;
+
+  @IsOptional()
+  @IsUrl()
+  linkedIn?: string;
+
+  @IsOptional()
+  @IsUrl()
+  facebook?: string;
+
+  @IsOptional()
+  @IsUrl()
+  twitter?: string;
+
+  @IsOptional()
+  @IsString()
+  themeColor?: string;
 }

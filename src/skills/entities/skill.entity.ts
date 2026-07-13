@@ -21,7 +21,7 @@ export class Skill {
   name!: string;
 
   @Column({ length: 50 })
-  category!: SkillCategory;
+  category!: string;
 
   @Column({ type: 'int', default: 0 })
   percentage!: number;

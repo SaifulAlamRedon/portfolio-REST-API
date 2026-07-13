@@ -1,6 +1,8 @@
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { describe, expect, it, beforeEach } from '@jest/globals';
+import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 
@@ -17,6 +19,15 @@ describe('AuthService', () => {
           useValue: {
             signAsync: jest.fn().mockResolvedValue('token'),
             verifyAsync: jest.fn().mockResolvedValue({ sub: 'user-1', email: 'test@example.com' }),
+          },
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn().mockResolvedValue(null),
+            create: jest.fn((user) => user),
+            save: jest.fn((user) => Promise.resolve({ ...user, id: 'user-1' })),
+            find: jest.fn().mockResolvedValue([]),
           },
         },
       ],

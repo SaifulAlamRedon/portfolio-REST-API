@@ -37,6 +37,15 @@ import { Project } from './projects/entities/project.entity';
 import { Category } from './projects/entities/category.entity';
 import { Technology } from './projects/entities/technology.entity';
 import { Skill } from './skills/entities/skill.entity';
+import { Experience } from './experiences/entities/experience.entity';
+import { Education } from './education/entities/education.entity';
+import { Certificate } from './certificates/entities/certificate.entity';
+import { ContactMessage } from './contact/entities/contact-message.entity';
+import { Testimonial } from './testimonials/entities/testimonial.entity';
+import { Upload } from './uploads/entities/upload.entity';
+import { AnalyticsEvent } from './analytics/entities/analytics-event.entity';
+import { Settings } from './settings/entities/settings.entity';
+import { User } from './users/entities/user.entity';
 
 @Module({
   imports: [
@@ -51,7 +60,7 @@ import { Skill } from './skills/entities/skill.entity';
         username: configService.get<string>('DB_USERNAME', 'postgres'),
         password: configService.get<string>('DB_PASSWORD', 'postgres'),
         database: configService.get<string>('DB_NAME', 'portfolio'),
-        entities: [Project, Category, Technology, Skill],
+        entities: [Project, Category, Technology, Skill, Experience, Education, Certificate, ContactMessage, Testimonial, Upload, AnalyticsEvent, Settings, User],
         synchronize: true,
         logging: false,
       }),

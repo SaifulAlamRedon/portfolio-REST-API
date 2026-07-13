@@ -1,33 +1,110 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateTestimonialDto } from './dto/create-testimonial.dto';
+import { Testimonial } from './entities/testimonial.entity';
 
 @Injectable()
 export class TestimonialsService {
-  submitTestimonial(dto: CreateTestimonialDto) {
-    return { status: 'submitted', data: dto };
+  constructor(
+    @InjectRepository(Testimonial)
+    private readonly testimonialRepository: Repository<Testimonial>,
+  ) {}
+
+  async submitTestimonial(dto: CreateTestimonialDto) {
+    const testimonial = this.testimonialRepository.create({
+      name: dto.name,
+      company: dto.company,
+      designation: dto.designation,
+      photo: dto.photo,
+      rating: dto.rating ?? 5,
+      message: dto.message,
+      approved: dto.approved ?? false,
+    });
+
+    const saved = await this.testimonialRepository.save(testimonial);
+    return { success: true, message: 'Testimonial submitted successfully', data: saved };
   }
 
-  findAllApproved() {
-    return { status: 'approved_list', data: [] };
+  async findAllApproved() {
+    const testimonials = await this.testimonialRepository.find({
+      where: { approved: true },
+      order: { createdAt: 'DESC' },
+      withDeleted: false,
+    });
+
+    return { success: true, message: 'Approved testimonials fetched successfully', data: testimonials };
   }
 
-  approveTestimonial(id: string) {
-    return { status: 'approved', id };
+  async approveTestimonial(id: string) {
+    const testimonial = await this.testimonialRepository.findOne({
+      where: { id },
+      withDeleted: false,
+    });
+
+    if (!testimonial) {
+      throw new NotFoundException('Testimonial not found');
+    }
+
+    testimonial.approved = true;
+    const saved = await this.testimonialRepository.save(testimonial);
+
+    return { success: true, message: 'Testimonial approved successfully', data: saved };
   }
 
-  rejectTestimonial(id: string) {
-    return { status: 'rejected', id };
+  async rejectTestimonial(id: string) {
+    const testimonial = await this.testimonialRepository.findOne({
+      where: { id },
+      withDeleted: false,
+    });
+
+    if (!testimonial) {
+      throw new NotFoundException('Testimonial not found');
+    }
+
+    testimonial.approved = false;
+    const saved = await this.testimonialRepository.save(testimonial);
+
+    return { success: true, message: 'Testimonial rejected successfully', data: saved };
   }
 
-  deleteTestimonial(id: string) {
-    return { status: 'deleted', id };
+  async deleteTestimonial(id: string) {
+    const testimonial = await this.testimonialRepository.findOne({
+      where: { id },
+      withDeleted: false,
+    });
+
+    if (!testimonial) {
+      throw new NotFoundException('Testimonial not found');
+    }
+
+    await this.testimonialRepository.softDelete(testimonial.id);
+    return { success: true, message: 'Testimonial deleted successfully' };
   }
 
-  findPending() {
-    return { status: 'pending_list', data: [] };
+  async findPending() {
+    const testimonials = await this.testimonialRepository.find({
+      where: { approved: false },
+      order: { createdAt: 'ASC' },
+      withDeleted: false,
+    });
+
+    return { success: true, message: 'Pending testimonials fetched successfully', data: testimonials };
   }
 
-  uploadPhoto(id: string, file: any) {
-    return { status: 'photo_uploaded', id, fileName: file?.originalname };
+  async uploadPhoto(id: string, file: any) {
+    const testimonial = await this.testimonialRepository.findOne({
+      where: { id },
+      withDeleted: false,
+    });
+
+    if (!testimonial) {
+      throw new NotFoundException('Testimonial not found');
+    }
+
+    testimonial.photo = file?.path || file?.filename || file?.originalname;
+    const saved = await this.testimonialRepository.save(testimonial);
+
+    return { success: true, message: 'Photo uploaded successfully', data: saved };
   }
 }

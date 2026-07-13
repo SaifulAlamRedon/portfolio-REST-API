@@ -1,62 +1,67 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-
-interface EducationRecord {
-  id: string;
-  institution: string;
-  degree: string;
-  fieldOfStudy: string;
-  startYear: number;
-  endYear?: number;
-  description?: string;
-}
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CreateEducationDto } from './dto/create-education.dto';
+import { UpdateEducationDto } from './dto/update-education.dto';
+import { Education } from './entities/education.entity';
 
 @Injectable()
 export class EducationService {
-  private readonly education: EducationRecord[] = [
-    {
-      id: 'edu-1',
-      institution: 'AIUB',
-      degree: 'B.Sc.',
-      fieldOfStudy: 'Computer Science',
-      startYear: 2020,
-      endYear: 2024,
-      description: 'Focused on software engineering and web technologies.',
-    },
-  ];
+  constructor(
+    @InjectRepository(Education)
+    private readonly educationRepository: Repository<Education>,
+  ) {}
 
-  findAll() {
-    return { success: true, message: 'Education fetched successfully', data: this.education };
+  async findAll() {
+    const education = await this.educationRepository.find({
+      withDeleted: false,
+      order: { startYear: 'DESC' },
+    });
+
+    return { success: true, message: 'Education fetched successfully', data: education };
   }
 
-  create(dto: any) {
-    const item: EducationRecord = {
-      id: `edu-${Date.now()}`,
+  async create(dto: CreateEducationDto) {
+    const education = this.educationRepository.create({
       institution: dto.institution,
       degree: dto.degree,
       fieldOfStudy: dto.fieldOfStudy,
       startYear: dto.startYear,
       endYear: dto.endYear,
       description: dto.description,
-    };
-    this.education.unshift(item);
-    return { success: true, message: 'Education created successfully', data: item };
+    });
+
+    const saved = await this.educationRepository.save(education);
+    return { success: true, message: 'Education created successfully', data: saved };
   }
 
-  update(id: string, dto: any) {
-    const item = this.education.find((entry) => entry.id === id);
-    if (!item) {
+  async update(id: string, dto: UpdateEducationDto) {
+    const education = await this.educationRepository.findOne({
+      where: { id },
+      withDeleted: false,
+    });
+
+    if (!education) {
       throw new NotFoundException('Education entry not found');
     }
-    Object.assign(item, dto);
-    return { success: true, message: 'Education updated successfully', data: item };
+
+    Object.assign(education, dto);
+    const saved = await this.educationRepository.save(education);
+
+    return { success: true, message: 'Education updated successfully', data: saved };
   }
 
-  remove(id: string) {
-    const index = this.education.findIndex((entry) => entry.id === id);
-    if (index === -1) {
+  async remove(id: string) {
+    const education = await this.educationRepository.findOne({
+      where: { id },
+      withDeleted: false,
+    });
+
+    if (!education) {
       throw new NotFoundException('Education entry not found');
     }
-    this.education.splice(index, 1);
+
+    await this.educationRepository.softDelete(education.id);
     return { success: true, message: 'Education deleted successfully' };
   }
 }
