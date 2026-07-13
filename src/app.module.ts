@@ -1,4 +1,3 @@
-import * as crypto from 'crypto';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';

@@ -1,5 +1,11 @@
 import 'reflect-metadata';
 import * as crypto from 'crypto';
+
+// Global crypto polyfill for TypeORM compatibility
+if (typeof (globalThis as any).crypto === 'undefined') {
+  (globalThis as any).crypto = crypto;
+}
+
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
