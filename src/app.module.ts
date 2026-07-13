@@ -41,17 +41,34 @@ import { User } from './users/entities/user.entity';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DB_HOST', 'localhost'),
-        port: Number(configService.get<number>('DB_PORT', 5432)),
-        username: configService.get<string>('DB_USERNAME', 'postgres'),
-        password: configService.get<string>('DB_PASSWORD', 'postgres'),
-        database: configService.get<string>('DB_NAME', 'portfolio'),
-        entities: [Project, Category, Technology, Skill, Experience, Education, Certificate, ContactMessage, Testimonial, Upload, AnalyticsEvent, Settings, User],
-        synchronize: true,
-        logging: false,
-      }),
+      useFactory: (configService: ConfigService) => {
+        const isProd = configService.get<string>('NODE_ENV') === 'production';
+        const databaseUrl = configService.get<string>('DATABASE_URL') || process.env.DATABASE_URL;
+
+        // Use DATABASE_URL only in production (Railway). For local/dev prefer explicit DB_* vars.
+        if (isProd && databaseUrl) {
+          return {
+            type: 'postgres',
+            url: databaseUrl,
+            entities: [Project, Category, Technology, Skill, Experience, Education, Certificate, ContactMessage, Testimonial, Upload, AnalyticsEvent, Settings, User],
+            synchronize: !isProd,
+            logging: false,
+            ssl: isProd ? { rejectUnauthorized: false } : undefined,
+          } as any;
+        }
+
+        return {
+          type: 'postgres',
+          host: configService.get<string>('DB_HOST', 'localhost'),
+          port: Number(configService.get<number>('DB_PORT', 5432)),
+          username: configService.get<string>('DB_USERNAME', 'postgres'),
+          password: configService.get<string>('DB_PASSWORD', 'postgres'),
+          database: configService.get<string>('DB_NAME', 'portfolio'),
+          entities: [Project, Category, Technology, Skill, Experience, Education, Certificate, ContactMessage, Testimonial, Upload, AnalyticsEvent, Settings, User],
+          synchronize: !isProd,
+          logging: false,
+        };
+      },
     }),
     AuthModule,
     UsersModule,
