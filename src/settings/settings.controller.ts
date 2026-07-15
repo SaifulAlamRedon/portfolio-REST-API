@@ -2,6 +2,7 @@ import { Body, Controller, Get, Patch, Post, UploadedFile, UseGuards, UseInterce
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { CreateSettingsDto } from './dto/create-settings.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { SettingsService } from './settings.service';
@@ -11,7 +12,7 @@ import { SettingsService } from './settings.service';
 export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
-  @Roles('admin')
+  @Public()
   @Get()
   find() {
     return this.settingsService.getSettings();

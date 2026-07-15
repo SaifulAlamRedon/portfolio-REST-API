@@ -2,17 +2,17 @@ import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class CreateExperienceDto {
   @IsString()
-  company: string;
+  company!: string;
 
   @IsString()
-  position: string;
+  position!: string;
 
   @IsOptional()
   @IsString()
   employmentType?: string;
 
   @IsString()
-  startDate: string;
+  startDate!: string;
 
   @IsOptional()
   @IsString()

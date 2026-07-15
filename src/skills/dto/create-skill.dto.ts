@@ -2,7 +2,7 @@ import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateSkillDto {
   @IsString()
-  name: string;
+  name!: string;
 
   @IsOptional()
   @IsString()
