@@ -1,9 +1,11 @@
 import 'reflect-metadata';
 import * as crypto from 'crypto';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 // Global crypto polyfill for TypeORM compatibility
-if (typeof (globalThis as any).crypto === 'undefined') {
-  (globalThis as any).crypto = crypto;
+if (typeof globalThis.crypto === 'undefined') {
+  globalThis.crypto = crypto as unknown as Crypto;
 }
 
 import { ValidationPipe } from '@nestjs/common';
@@ -12,22 +14,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-
-const requireFunc = eval('require') as any;
-const helmet: any = (() => {
-  try {
-    return requireFunc('helmet');
-  } catch {
-    return null;
-  }
-})();
-const rateLimit: any = (() => {
-  try {
-    return requireFunc('express-rate-limit');
-  } catch {
-    return null;
-  }
-})();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -74,8 +60,12 @@ async function bootstrap() {
     await app.listen(port, '0.0.0.0');
     console.log(`🚀 Server running at http://localhost:${port}`);
     console.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
-  } catch (error: any) {
-    if (error.code === 'EADDRINUSE') {
+  } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'EADDRINUSE'
+    ) {
       console.error(`❌ Port ${port} is already in use.`);
       console.error(
         `Please stop the process using port ${port} and try again.`,
@@ -87,4 +77,4 @@ async function bootstrap() {
   }
 }
 
-bootstrap();
+void bootstrap();
